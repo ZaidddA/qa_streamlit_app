@@ -1,58 +1,53 @@
+import streamlit as st
 import re
-import streamlit as st
 from PyPDF2 import PdfReader
-from transformers import pipeline
-from sentence_transformers import SentenceTransformer
-import faiss
-import numpy as np
+from transformers import pipeline, AutoTokenizer, AutoModelForQuestionAnswering
+from docx import Document
 
+st.title("📄 Document Question Answering App")
 
-import streamlit as st
-from PyPDF2 import PdfReader
+uploaded_file = st.file_uploader("📤 Upload a document", type=["pdf", "docx", "txt"])
 
-uploaded_file = st.file_uploader("📄 Upload a PDF", type="pdf")
+text = ""
 
 if uploaded_file is not None:
-    reader = PdfReader(uploaded_file)
-    text = ""
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text
+    file_type = uploaded_file.name.split(".")[-1]
 
-    st.success("✅ PDF successfully loaded.")
-    st.text_area("Extracted Text Preview", text[:1500])
+    if file_type == "pdf":
+        reader = PdfReader(uploaded_file)
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text
+
+    elif file_type == "docx":
+        doc = Document(uploaded_file)
+        for para in doc.paragraphs:
+            text += para.text + "\n"
+
+    elif file_type == "txt":
+        text = uploaded_file.read().decode("utf-8")
+
+
+    raw_text = text
+    cleaned_text = re.sub(r"\s+", " ", raw_text)
+    cleaned_text = re.sub(r"(\w)- (\w)", r"\1\2", cleaned_text)
+    context = cleaned_text
+
+    st.success("✅ Document successfully loaded.")
+    st.text_area("📑 Extracted Text Preview", text[:1500])
+
+    model_name = "valhalla/longformer-base-4096-finetuned-squadv1"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForQuestionAnswering.from_pretrained(model_name)
+    qa_pipeline = pipeline("question-answering", model=model, tokenizer=tokenizer)
+
+    user_question = st.text_input("💬 Ask a question about the document:")
+    if st.button("Get Answer") and user_question.strip():
+        result = qa_pipeline({"question": user_question, "context": context})
+        st.write(f"🔹 **Question**: {user_question}")
+        st.write(f"🧠 **Answer**: {result['answer']}")
+        st.write(f"📊 **Confidence Score**: {round(result['score'], 3)}")
+
 else:
-    st.warning("Please upload a PDF to continue.")
-
-cleaned_text = re.sub(r'\s+', ' ', text)
-cleaned_text = re.sub(r'(\w)- (\w)', r'\1\2', cleaned_text)
-
-print(f"cleaned text: {len(cleaned_text)}")
-
-
-context = cleaned_text
-
-
-from transformers import AutoTokenizer, AutoModelForQuestionAnswering, pipeline
-
-model_name = "valhalla/longformer-base-4096-finetuned-squadv1"
-
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForQuestionAnswering.from_pretrained(model_name)
-
-qa_pipeline = pipeline("question-answering", model=model, tokenizer=tokenizer)
-
-
-#ex
-# questions = [
-#     "What is high-quality primary care?",
-#     "What are the essential elements of primary care?",
-#     "What role does the government play in strengthening it?"
-# ]
-
-# for q in questions:
-#     result = qa_pipeline({"question": q, "context": context})
-#     print(f"\n Question: {q}")
-#     print(f" Answer: {result['answer']}")
-#     print(f" Score: {round(result['score'], 3)}")
+    st.info("Please upload a PDF, DOCX, or TXT file to begin.")
