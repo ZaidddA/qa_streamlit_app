@@ -1,5 +1,5 @@
 streamlit
-transformers
-sentence-transformers
 faiss-cpu
-numpy
+sentence-transformers
+transformers
+PyPDF2
