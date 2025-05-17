@@ -1,6 +1,3 @@
-!pip install faiss-cpu sentence-transformers transformers PyPDF2
-
-
 import re
 from PyPDF2 import PdfReader
 
