@@ -7,15 +7,27 @@ import faiss
 import numpy as np
 
 
-reader = PdfReader("white_paper.pdf")
-raw_text = ""
-for page in reader.pages:
-    text = page.extract_text()
-    if text:
-        raw_text += text + " "
+import streamlit as st
+from PyPDF2 import PdfReader
 
-cleaned_text = re.sub(r'\s+', ' ', raw_text)
-cleaned_text = re.sub(r'(?<=\w)- (?=\w)', '', cleaned_text)
+uploaded_file = st.file_uploader("📄 Upload a PDF", type="pdf")
+
+if uploaded_file is not None:
+    reader = PdfReader(uploaded_file)
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text
+
+    st.success("✅ PDF successfully loaded.")
+    st.text_area("Extracted Text Preview", text[:1500])
+else:
+    st.warning("Please upload a PDF to continue.")
+
+cleaned_text = re.sub(r'\s+', ' ', text)
+cleaned_text = re.sub(r'(\w)- (\w)', r'\1\2', cleaned_text)
+
 print(f"cleaned text: {len(cleaned_text)}")
 
 
